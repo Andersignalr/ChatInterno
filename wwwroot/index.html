@@ -10,13 +10,15 @@
     <div class="chat-container">
         <h2>Chat Interno</h2>
 
-        <div id="login">
-            <input id="nome" placeholder="Seu nome" />
-            <button onclick="registrar()">Entrar</button>
-        </div>
-
+        <!-- CHAT -->
         <div id="chat" style="display:none;">
             <div>
+                Usuário: <strong><span id="usuario"></span></strong>
+                <button onclick="logout()" style="float:right">Sair</button>
+            </div>
+
+            <!-- SALA -->
+            <div class="sala-bar">
                 Sala:
                 <input id="sala" placeholder="Ex: geral" />
                 <button onclick="entrarSala()">Entrar na sala</button>
@@ -24,25 +26,64 @@
             </div>
 
             <div class="layout">
+
+                <!-- USUÁRIOS -->
                 <div class="usuarios">
                     <h4>Usuários na sala</h4>
                     <ul id="listaUsuarios"></ul>
+
+                    <!-- PRIVADO -->
+                    <div class="privado">
+                        <h4>Mensagem privada</h4>
+                        <select id="destinatario"></select>
+                        <input id="mensagemPrivada" placeholder="Mensagem privada" />
+                        <button onclick="enviarPrivado()">Enviar</button>
+                    </div>
                 </div>
 
+                <!-- MENSAGENS -->
                 <div class="mensagens-area">
                     <div id="mensagens" class="mensagens"></div>
 
                     <input id="mensagem" placeholder="Digite sua mensagem" />
                     <button onclick="enviar()">Enviar</button>
                 </div>
+
             </div>
         </div>
     </div>
 
-
-
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
-    <script src="chat.js"></script>
+
+    <script>
+        /* =========================
+           VERIFICA LOGIN
+        ========================= */
+        async function verificarLogin() {
+            const response = await fetch("/auth/me");
+
+            if (!response.ok) {
+                window.location.href = "/login.html";
+                return;
+            }
+
+            const data = await response.json();
+            document.getElementById("usuario").innerText = data.user;
+            document.getElementById("chat").style.display = "block";
+        }
+
+        verificarLogin();
+
+        /* =========================
+           LOGOUT
+        ========================= */
+        async function logout() {
+            await fetch("/Account/Logout", { method: "POST" });
+            window.location.href = "/login.html";
+        }
+    </script>
+
+    <script src="chat.js?v=4"></script>
 
 </body>
 </html>

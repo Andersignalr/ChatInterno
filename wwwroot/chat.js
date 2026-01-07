@@ -1,11 +1,33 @@
-﻿const connection = new signalR.HubConnectionBuilder()
-    .withUrl("/chat")
+﻿/* =========================
+   VERIFICA LOGIN
+========================= */
+async function verificarLogin() {
+    const response = await fetch("/auth/me");
+
+    if (!response.ok) {
+        window.location.href = "/login.html";
+        return;
+    }
+
+    const data = await response.json();
+    document.getElementById("usuario").innerText = data.user;
+}
+
+verificarLogin();
+
+/* =========================
+   SIGNALR
+========================= */
+const connection = new signalR.HubConnectionBuilder()
+    .withUrl("/chat") // confirme se é /chat ou /chathub
     .build();
 
-let usuarioRegistrado = false;
 let salaAtual = null;
 
-// Eventos
+/* =========================
+   EVENTOS DO HUB
+========================= */
+
 connection.on("UsuarioEntrouNaSala", (nome) => {
     adicionarMensagem(`🟢 ${nome} entrou na sala`);
 });
@@ -20,33 +42,40 @@ connection.on("ReceberMensagem", (nome, mensagem) => {
 
 connection.on("ListaUsuariosSala", (usuarios) => {
     const ul = document.getElementById("listaUsuarios");
+    const select = document.getElementById("destinatario");
+
     ul.innerHTML = "";
+    select.innerHTML = "";
 
     usuarios.forEach(nome => {
         const li = document.createElement("li");
         li.textContent = nome;
         ul.appendChild(li);
+
+        const opt = document.createElement("option");
+        opt.value = nome;
+        opt.textContent = nome;
+        select.appendChild(opt);
     });
 });
 
-connection.start().catch(err => console.error(err));
+connection.on("ReceberMensagemPrivada", (nome, mensagem) => {
+    adicionarMensagem(`🔒 <strong>${nome} (privado):</strong> ${mensagem}`);
+});
 
-// Ações
-function registrar() {
-    const nome = document.getElementById("nome").value;
-    if (!nome) return;
+/* =========================
+   CONECTA
+========================= */
+connection.start()
+    .catch(err => console.error(err));
 
-    connection.invoke("RegistrarUsuario", nome)
-        .then(() => {
-            usuarioRegistrado = true;
-            document.getElementById("login").style.display = "none";
-            document.getElementById("chat").style.display = "block";
-        });
-}
+/* =========================
+   AÇÕES
+========================= */
 
 function entrarSala() {
     const sala = document.getElementById("sala").value;
-    if (!sala || !usuarioRegistrado) return;
+    if (!sala) return;
 
     salaAtual = sala;
     document.getElementById("salaAtual").innerText = `(${sala})`;
@@ -63,8 +92,25 @@ function enviar() {
     document.getElementById("mensagem").value = "";
 }
 
+function enviarPrivado() {
+    const destinatario = document.getElementById("destinatario").value;
+    const mensagem = document.getElementById("mensagemPrivada").value;
+
+    if (!destinatario || !mensagem) return;
+
+    connection.invoke("EnviarMensagemPrivada", destinatario, mensagem);
+    document.getElementById("mensagemPrivada").value = "";
+}
+
+/* =========================
+   UI
+========================= */
+
 function adicionarMensagem(html) {
     const div = document.createElement("div");
     div.innerHTML = html;
-    document.getElementById("mensagens").appendChild(div);
+
+    const mensagens = document.getElementById("mensagens");
+    mensagens.appendChild(div);
+    mensagens.scrollTop = mensagens.scrollHeight;
 }

@@ -1,81 +1,96 @@
-﻿using Microsoft.AspNetCore.SignalR;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.SignalR;
 using System.Collections.Concurrent;
+using System.Security.Claims;
 
 namespace ChatInterno.Hubs;
 
+[Authorize]
 public class ChatHub : Hub
 {
-    private static ConcurrentDictionary<string, string> Usuarios =
-        new ConcurrentDictionary<string, string>();
+    private static ConcurrentDictionary<string, string> UserSala =
+        new();
 
-    private static ConcurrentDictionary<string, string> SalasPorConexao =
-        new ConcurrentDictionary<string, string>();
+    public override async Task OnConnectedAsync()
+    {
+        var nome = Context.User.Identity!.Name!;
+        await Clients.Caller.SendAsync("Sistema", $"Conectado como {nome}");
+    }
 
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
-        if (Usuarios.TryRemove(Context.ConnectionId, out var nome))
+        var userId = GetUserId();
+
+        if (UserSala.TryRemove(userId, out var sala))
         {
-            if (SalasPorConexao.TryRemove(Context.ConnectionId, out var sala))
-            {
-                await Groups.RemoveFromGroupAsync(Context.ConnectionId, sala);
-                await Clients.Group(sala).SendAsync("UsuarioSaiuDaSala", nome);
-                await EnviarUsuariosDaSala(sala);
-            }
+            await Groups.RemoveFromGroupAsync(Context.ConnectionId, sala);
+            await Clients.Group(sala)
+                .SendAsync("UsuarioSaiuDaSala", Context.User.Identity!.Name);
+
+            await EnviarUsuariosDaSala(sala);
         }
 
         await base.OnDisconnectedAsync(exception);
     }
 
-    public async Task RegistrarUsuario(string nome)
-    {
-        Usuarios[Context.ConnectionId] = nome;
-    }
-
     public async Task EntrarNaSala(string sala)
     {
-        var connectionId = Context.ConnectionId;
+        var userId = GetUserId();
+        var nome = Context.User.Identity!.Name!;
 
-        // Sai da sala anterior
-        if (SalasPorConexao.TryGetValue(connectionId, out var salaAnterior))
+        if (UserSala.TryGetValue(userId, out var salaAnterior))
         {
-            await Groups.RemoveFromGroupAsync(connectionId, salaAnterior);
+            await Groups.RemoveFromGroupAsync(Context.ConnectionId, salaAnterior);
             await Clients.Group(salaAnterior)
-                .SendAsync("UsuarioSaiuDaSala", Usuarios[connectionId]);
+                .SendAsync("UsuarioSaiuDaSala", nome);
         }
 
-        SalasPorConexao[connectionId] = sala;
+        UserSala[userId] = sala;
 
-        await Groups.AddToGroupAsync(connectionId, sala);
+        await Groups.AddToGroupAsync(Context.ConnectionId, sala);
 
         await Clients.Group(sala)
-            .SendAsync("UsuarioEntrouNaSala", Usuarios[connectionId]);
+            .SendAsync("UsuarioEntrouNaSala", nome);
 
         await EnviarUsuariosDaSala(sala);
     }
 
     public async Task EnviarMensagem(string mensagem)
     {
-        var connectionId = Context.ConnectionId;
+        var userId = GetUserId();
 
-        if (!Usuarios.TryGetValue(connectionId, out var nome))
-            return;
-
-        if (!SalasPorConexao.TryGetValue(connectionId, out var sala))
+        if (!UserSala.TryGetValue(userId, out var sala))
             return;
 
         await Clients.Group(sala)
-            .SendAsync("ReceberMensagem", nome, mensagem);
+            .SendAsync("ReceberMensagem",
+                Context.User.Identity!.Name,
+                mensagem);
+    }
+
+    public async Task EnviarMensagemPrivada(string userIdDestino, string mensagem)
+    {
+        var remetente = Context.User.Identity!.Name;
+
+        await Clients.User(userIdDestino)
+            .SendAsync("ReceberMensagemPrivada", remetente, mensagem);
     }
 
     private async Task EnviarUsuariosDaSala(string sala)
     {
-        var usuariosDaSala = SalasPorConexao
+        var usuarios = UserSala
             .Where(x => x.Value == sala)
-            .Select(x => Usuarios[x.Key])
-            .OrderBy(n => n)
+            .Select(x => x.Key)
             .ToList();
 
         await Clients.Group(sala)
-            .SendAsync("ListaUsuariosSala", usuariosDaSala);
+            .SendAsync("ListaUsuariosSala", usuarios);
+    }
+
+    private string GetUserId()
+    {
+        return Context.User!
+            .FindFirst(ClaimTypes.NameIdentifier)!
+            .Value;
     }
 }

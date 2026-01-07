@@ -1,0 +1,92 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Registrar usuário</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f4f4;
+        }
+
+        .container {
+            width: 300px;
+            margin: 80px auto;
+            padding: 20px;
+            background: #fff;
+            border-radius: 6px;
+            box-shadow: 0 0 10px rgba(0,0,0,.1);
+        }
+
+        input, button {
+            width: 100%;
+            margin-top: 10px;
+            padding: 8px;
+        }
+
+        button {
+            cursor: pointer;
+        }
+
+        .erro {
+            color: red;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>Registrar</h2>
+
+        <input id="email" type="email" placeholder="Email" />
+        <input id="password" type="password" placeholder="Senha" />
+        <input id="confirmPassword" type="password" placeholder="Confirmar senha" />
+
+        <button onclick="register()">Registrar</button>
+
+        <div id="erro" class="erro"></div>
+    </div>
+
+    <script>
+        async function register() {
+            const email = document.getElementById("email").value;
+            const password = document.getElementById("password").value;
+            const confirmPassword = document.getElementById("confirmPassword").value;
+            const erroDiv = document.getElementById("erro");
+
+            erroDiv.innerText = "";
+
+            if (!email || !password) {
+                erroDiv.innerText = "Preencha todos os campos.";
+                return;
+            }
+
+            if (password !== confirmPassword) {
+                erroDiv.innerText = "As senhas não conferem.";
+                return;
+            }
+
+            const response = await fetch("/auth/register", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    email,
+                    password
+                })
+            });
+
+
+            if (response.ok) {
+                alert("Usuário criado com sucesso!");
+                window.location.href = "/login.html";
+            } else {
+                erroDiv.innerText = "Erro ao registrar usuário.";
+            }
+        }
+    </script>
+
+</body>
+</html>

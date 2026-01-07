@@ -1,0 +1,42 @@
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// 🔹 DbContext
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseSqlServer(
+        builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// 🔹 Identity
+builder.Services
+    .AddIdentity<IdentityUser, IdentityRole>(options =>
+    {
+        options.Password.RequireDigit = false;
+        options.Password.RequireLowercase = false;
+        options.Password.RequireUppercase = false;
+        options.Password.RequireNonAlphanumeric = false;
+        options.Password.RequiredLength = 6;
+    })
+    .AddEntityFrameworkStores<ApplicationDbContext>()
+    .AddDefaultTokenProviders();
+
+// 🔹 Auth cookie
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    options.LoginPath = "/login.html";
+});
+
+builder.Services.AddAuthentication();
+builder.Services.AddAuthorization();
+
+// 🔹 SignalR
+builder.Services.AddSignalR();
+
+// 🔹 UserIdProvider (SignalR)
+builder.Services.AddSingleton<IUserIdProvider, NameIdentifierUserIdProvider>();
+
+var app = builder.Build();
+
+app.UseAuthentication();
+app.UseAuthorization();
