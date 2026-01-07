@@ -1,0 +1,48 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Chat Interno</title>
+    <link rel="stylesheet" href="chat.css">
+</head>
+<body>
+
+    <div class="chat-container">
+        <h2>Chat Interno</h2>
+
+        <div id="login">
+            <input id="nome" placeholder="Seu nome" />
+            <button onclick="registrar()">Entrar</button>
+        </div>
+
+        <div id="chat" style="display:none;">
+            <div>
+                Sala:
+                <input id="sala" placeholder="Ex: geral" />
+                <button onclick="entrarSala()">Entrar na sala</button>
+                <strong id="salaAtual"></strong>
+            </div>
+
+            <div class="layout">
+                <div class="usuarios">
+                    <h4>Usuários na sala</h4>
+                    <ul id="listaUsuarios"></ul>
+                </div>
+
+                <div class="mensagens-area">
+                    <div id="mensagens" class="mensagens"></div>
+
+                    <input id="mensagem" placeholder="Digite sua mensagem" />
+                    <button onclick="enviar()">Enviar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+    <script src="chat.js"></script>
+
+</body>
+</html>
